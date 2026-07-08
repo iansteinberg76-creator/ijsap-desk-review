@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IJSaP Desk Review History</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Token gate -->
+<div class="token-gate" id="tokenGate">
+  <div class="token-gate-inner">
+    <h1>IJSaP Assessment History</h1>
+    <p id="tokenPromptText"></p>
+    <div class="error-msg" id="tokenErrorMsg"></div>
+    <input type="password" id="tokenInput" placeholder="Access token" autocomplete="off">
+    <div style="margin-top:0.5rem">
+      <button class="btn btn-primary" id="tokenSubmitBtn">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="history-container" id="historyContainer">
+  <header>
+    <h1>IJSaP Assessment History</h1>
+    <div class="subtitle version-display" id="versionDisplay"></div>
+  </header>
+
+  <!-- Summary panel -->
+  <div class="summary-panel" id="summaryPanel">
+    <h3>Summary</h3>
+    <div class="summary-stats" id="summaryStats"></div>
+    <div class="breakdown-section" id="outcomeBreakdown">
+      <h4>By outcome</h4>
+      <div id="outcomeBreakdownRows"></div>
+    </div>
+    <div class="breakdown-section" id="genreBreakdown">
+      <h4>By genre</h4>
+      <div id="genreBreakdownRows"></div>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar" id="filterBar">
+    <div class="filter-group">
+      <label for="filterOutcome">Outcome</label>
+      <select id="filterOutcome"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label for="filterGenre">Genre</label>
+      <select id="filterGenre"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label for="filterEditor">Editor</label>
+      <input type="text" id="filterEditor" placeholder="Search...">
+    </div>
+    <div class="filter-group">
+      <label for="filterSubmission">Submission</label>
+      <input type="text" id="filterSubmission" placeholder="ID or title...">
+    </div>
+    <div class="filter-group">
+      <label for="filterFrom">From</label>
+      <input type="date" id="filterFrom">
+    </div>
+    <div class="filter-group">
+      <label for="filterTo">To</label>
+      <input type="date" id="filterTo">
+    </div>
+    <div class="filter-group" style="justify-content:flex-end">
+      <button class="btn btn-secondary btn-small" id="clearFilters">Clear filters</button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="records-table-wrapper">
+    <table class="records-table" id="recordsTable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Sub. ID</th>
+          <th class="col-full">Title</th>
+          <th class="col-full">Genre</th>
+          <th>Outcome</th>
+          <th class="col-full">Editors</th>
+          <th class="col-full">Layer</th>
+          <th class="col-full">Content Ver.</th>
+        </tr>
+      </thead>
+      <tbody id="recordsBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination" id="pagination"></div>
+
+  <!-- Export -->
+  <div style="margin-top:1rem;text-align:right">
+    <button class="btn btn-outline btn-small" id="exportCsv">Export to CSV</button>
+  </div>
+
+  <footer>
+    <a href="index.html">Back to desk review tool</a>
+    <span style="margin:0 0.5rem">|</span>
+    <span class="version-display" id="footerVersion"></span>
+  </footer>
+</div>
+
+<script src="content.js"></script>
+<script>
+(function() {
+  "use strict";
+
+  const C = window.IJSAP_CONTENT;
+  const META = C.meta;
+
+  let token = "";
+  let allRecords = [];
+  let filteredRecords = [];
+  let currentPage = 1;
+  const PAGE_SIZE = 25;
+  let debounceTimer = null;
+
+  function $(id) { return document.getElementById(id); }
+
+  function getOutcomeColor(outcome) {
+    const o = META.outcomes.find(x => x.string === outcome);
+    return o ? o.color : "#666";
+  }
+
+  // ---- Token gate ----
+  function showTokenGate() {
+    $("tokenGate").style.display = "flex";
+    $("historyContainer").style.display = "none";
+    $("tokenPromptText").textContent = C.ui.tokenPrompt;
+    $("tokenErrorMsg").textContent = C.ui.tokenError;
+    $("tokenInput").value = "";
+    $("tokenInput").focus();
+  }
+
+  async function verifyToken(t) {
+    try {
+      const resp = await fetch("/api/list-records?genre=__verify", {
+        headers: { "x-ijsap-token": t }
+      });
+      return resp.ok;
+    } catch { return false; }
+  }
+
+  $("tokenSubmitBtn").addEventListener("click", async () => {
+    const t = $("tokenInput").value.trim();
+    if (!t) return;
+    $("tokenSubmitBtn").disabled = true;
+    const ok = await verifyToken(t);
+    $("tokenSubmitBtn").disabled = false;
+    if (ok) {
+      token = t;
+      sessionStorage.setItem("ijsap_token", t);
+      $("tokenGate").style.display = "none";
+      initHistory();
+    } else {
+      $("tokenErrorMsg").style.display = "block";
+      $("tokenInput").value = "";
+      $("tokenInput").focus();
+    }
+  });
+
+  $("tokenInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("tokenSubmitBtn").click();
+  });
+
+  // ---- API ----
+  async function apiCall(path) {
+    const resp = await fetch(path, {
+      headers: { "x-ijsap-token": token }
+    });
+    if (resp.status === 403) {
+      sessionStorage.removeItem("ijsap_token");
+      token = "";
+      showTokenGate();
+      throw new Error("403");
+    }
+    return resp;
+  }
+
+  // ---- Fetch records ----
+  async function fetchRecords() {
+    const params = new URLSearchParams();
+    const outcome = $("filterOutcome").value;
+    const genre = $("filterGenre").value;
+    const editor = $("filterEditor").value.trim();
+    const submission = $("filterSubmission").value.trim();
+    const from = $("filterFrom").value;
+    const to = $("filterTo").value;
+
+    if (outcome) params.set("outcome", outcome);
+    if (genre) params.set("genre", genre);
+    if (editor) params.set("editor", editor);
+    if (submission) params.set("submission", submission);
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+
+    try {
+      const resp = await apiCall("/api/list-records?" + params.toString());
+      if (resp.ok) {
+        filteredRecords = await resp.json();
+      } else {
+        filteredRecords = [];
+      }
+    } catch {
+      filteredRecords = [];
+    }
+
+    currentPage = 1;
+    renderTable();
+  }
+
+  async function fetchAll() {
+    try {
+      const resp = await apiCall("/api/list-records");
+      if (resp.ok) {
+        allRecords = await resp.json();
+        filteredRecords = allRecords;
+      }
+    } catch {
+      allRecords = [];
+      filteredRecords = [];
+    }
+    renderSummary();
+    renderTable();
+  }
+
+  // ---- Summary ----
+  function renderSummary() {
+    const total = allRecords.length;
+
+    // Stats
+    $("summaryStats").innerHTML = "";
+    const statEl = document.createElement("div");
+    statEl.className = "summary-stat";
+    const valEl = document.createElement("div");
+    valEl.className = "stat-value";
+    valEl.textContent = total;
+    const lblEl = document.createElement("div");
+    lblEl.className = "stat-label";
+    lblEl.textContent = "Total records";
+    statEl.appendChild(valEl);
+    statEl.appendChild(lblEl);
+    $("summaryStats").appendChild(statEl);
+
+    // Date range
+    if (total > 0) {
+      const dates = allRecords.map(r => r.assessment_date).filter(Boolean).sort();
+      if (dates.length > 0) {
+        const rangeEl = document.createElement("div");
+        rangeEl.className = "summary-stat";
+        const rv = document.createElement("div");
+        rv.className = "stat-value";
+        rv.style.fontSize = "1rem";
+        rv.textContent = dates[0] + " to " + dates[dates.length-1];
+        const rl = document.createElement("div");
+        rl.className = "stat-label";
+        rl.textContent = "Date range";
+        rangeEl.appendChild(rv);
+        rangeEl.appendChild(rl);
+        $("summaryStats").appendChild(rangeEl);
+      }
+    }
+
+    // Outcome breakdown
+    renderBreakdown(
+      $("outcomeBreakdownRows"),
+      META.outcomes.map(o => o.string),
+      allRecords.map(r => r.outcome),
+      total,
+      o => getOutcomeColor(o)
+    );
+
+    // Genre breakdown
+    renderBreakdown(
+      $("genreBreakdownRows"),
+      Object.keys(META.genres),
+      allRecords.map(r => r.genre),
+      total,
+      () => "#1B6B77"
+    );
+  }
+
+  function renderBreakdown(container, categories, values, total, colorFn) {
+    container.innerHTML = "";
+    for (const cat of categories) {
+      const count = values.filter(v => v === cat).length;
+      const pct = total > 0 ? ((count / total) * 100) : 0;
+
+      const row = document.createElement("div");
+      row.className = "breakdown-row";
+
+      const label = document.createElement("span");
+      label.className = "breakdown-label";
+      label.textContent = cat;
+
+      const barBg = document.createElement("div");
+      barBg.className = "breakdown-bar-bg";
+      const bar = document.createElement("div");
+      bar.className = "breakdown-bar";
+      bar.style.width = pct + "%";
+      bar.style.backgroundColor = colorFn(cat);
+      barBg.appendChild(bar);
+
+      const pctLabel = document.createElement("span");
+      pctLabel.className = "breakdown-pct";
+      pctLabel.textContent = count + " (" + Math.round(pct) + "%)";
+
+      row.appendChild(label);
+      row.appendChild(barBg);
+      row.appendChild(pctLabel);
+      container.appendChild(row);
+    }
+  }
+
+  // ---- Table ----
+  function renderTable() {
+    const body = $("recordsBody");
+    body.innerHTML = "";
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const page = filteredRecords.slice(start, start + PAGE_SIZE);
+
+    for (const rec of page) {
+      const tr = document.createElement("tr");
+
+      const tdDate = document.createElement("td");
+      tdDate.textContent = rec.assessment_date || "";
+      tr.appendChild(tdDate);
+
+      const tdSubId = document.createElement("td");
+      tdSubId.textContent = rec.submission_id || "";
+      tr.appendChild(tdSubId);
+
+      const tdTitle = document.createElement("td");
+      tdTitle.className = "col-full";
+      tdTitle.textContent = rec.submission_title || "";
+      tr.appendChild(tdTitle);
+
+      const tdGenre = document.createElement("td");
+      tdGenre.className = "col-full";
+      tdGenre.textContent = rec.genre || "";
+      tr.appendChild(tdGenre);
+
+      const tdOutcome = document.createElement("td");
+      const badge = document.createElement("span");
+      badge.className = "outcome-badge";
+      badge.style.backgroundColor = getOutcomeColor(rec.outcome);
+      badge.textContent = rec.outcome || "";
+      tdOutcome.appendChild(badge);
+      tr.appendChild(tdOutcome);
+
+      const tdEditors = document.createElement("td");
+      tdEditors.className = "col-full";
+      tdEditors.textContent = rec.editors || "";
+      tr.appendChild(tdEditors);
+
+      const tdLayer = document.createElement("td");
+      tdLayer.className = "col-full";
+      tdLayer.textContent = rec.layer_of_decision || "";
+      tr.appendChild(tdLayer);
+
+      const tdVersion = document.createElement("td");
+      tdVersion.className = "col-full";
+      tdVersion.textContent = rec.content_version || "";
+      tr.appendChild(tdVersion);
+
+      // Detail panel row
+      const detailTr = document.createElement("tr");
+      const detailTd = document.createElement("td");
+      detailTd.colSpan = 8;
+      detailTd.style.padding = "0";
+      const detailPanel = document.createElement("div");
+      detailPanel.className = "detail-panel";
+      detailPanel.innerHTML = "";
+
+      const fields = [
+        ["Submission ID", rec.submission_id],
+        ["Title", rec.submission_title],
+        ["Genre", rec.genre],
+        ["Outcome", rec.outcome],
+        ["Layer", rec.layer_of_decision],
+        ["Editors", rec.editors],
+        ["Assessment date", rec.assessment_date],
+        ["Key reason", rec.key_reason],
+        ["Points to carry forward", rec.points_to_carry_forward],
+        ["Formatting note", rec.formatting_note],
+        ["Reviewed by", rec.reviewed_by],
+        ["Review date", rec.reviewed_date],
+        ["Email text", rec.email_text],
+        ["Rubric version", rec.rubric_version],
+        ["Content version", rec.content_version]
+      ];
+
+      const dl = document.createElement("dl");
+      for (const [label, value] of fields) {
+        if (!value) continue;
+        const dt = document.createElement("dt");
+        dt.textContent = label;
+        const dd = document.createElement("dd");
+        dd.textContent = value;
+        dl.appendChild(dt);
+        dl.appendChild(dd);
+      }
+
+      // Link to open in tool
+      if (rec.id) {
+        const dt = document.createElement("dt");
+        dt.textContent = "Record link";
+        const dd = document.createElement("dd");
+        const link = document.createElement("a");
+        link.href = "/?id=" + encodeURIComponent(rec.id);
+        link.textContent = "Open in desk review tool";
+        link.style.color = "var(--ijsap-teal)";
+        dd.appendChild(link);
+        dl.appendChild(dt);
+        dl.appendChild(dd);
+      }
+
+      detailPanel.appendChild(dl);
+      detailTd.appendChild(detailPanel);
+      detailTr.appendChild(detailTd);
+
+      tr.addEventListener("click", () => {
+        const isOpen = detailPanel.style.display === "block";
+        // Close all
+        document.querySelectorAll(".detail-panel").forEach(p => p.style.display = "none");
+        if (!isOpen) detailPanel.style.display = "block";
+      });
+
+      body.appendChild(tr);
+      body.appendChild(detailTr);
+    }
+
+    renderPagination();
+  }
+
+  function renderPagination() {
+    const container = $("pagination");
+    container.innerHTML = "";
+    const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
+
+    if (totalPages <= 1) return;
+
+    const prevBtn = document.createElement("button");
+    prevBtn.className = "btn btn-small btn-outline";
+    prevBtn.textContent = "Previous";
+    prevBtn.disabled = currentPage <= 1;
+    prevBtn.addEventListener("click", () => { currentPage--; renderTable(); });
+    container.appendChild(prevBtn);
+
+    const info = document.createElement("span");
+    info.textContent = "Page " + currentPage + " of " + totalPages;
+    container.appendChild(info);
+
+    const nextBtn = document.createElement("button");
+    nextBtn.className = "btn btn-small btn-outline";
+    nextBtn.textContent = "Next";
+    nextBtn.disabled = currentPage >= totalPages;
+    nextBtn.addEventListener("click", () => { currentPage++; renderTable(); });
+    container.appendChild(nextBtn);
+  }
+
+  // ---- Filters ----
+  function initFilters() {
+    const outcomeSel = $("filterOutcome");
+    for (const o of META.outcomes) {
+      const opt = document.createElement("option");
+      opt.value = o.string;
+      opt.textContent = o.string;
+      outcomeSel.appendChild(opt);
+    }
+
+    const genreSel = $("filterGenre");
+    for (const g of Object.keys(META.genres)) {
+      const opt = document.createElement("option");
+      opt.value = g;
+      opt.textContent = g;
+      genreSel.appendChild(opt);
+    }
+
+    // Immediate filters
+    $("filterOutcome").addEventListener("change", fetchRecords);
+    $("filterGenre").addEventListener("change", fetchRecords);
+    $("filterFrom").addEventListener("change", fetchRecords);
+    $("filterTo").addEventListener("change", fetchRecords);
+
+    // Debounced text filters
+    $("filterEditor").addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(fetchRecords, 400);
+    });
+    $("filterSubmission").addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(fetchRecords, 400);
+    });
+
+    $("clearFilters").addEventListener("click", () => {
+      $("filterOutcome").value = "";
+      $("filterGenre").value = "";
+      $("filterEditor").value = "";
+      $("filterSubmission").value = "";
+      $("filterFrom").value = "";
+      $("filterTo").value = "";
+      fetchAll();
+    });
+  }
+
+  // ---- CSV Export ----
+  $("exportCsv").addEventListener("click", () => {
+    if (filteredRecords.length === 0) return;
+
+    const cols = [
+      "id", "assessment_date", "submission_id", "submission_title", "genre",
+      "suggested_genre", "outcome", "layer_of_decision", "editors",
+      "key_reason", "points_to_carry_forward", "formatting_note",
+      "reviewed_by", "reviewed_date", "email_text",
+      "rubric_version", "content_version", "shareable_url",
+      "created_at", "updated_at"
+    ];
+
+    function csvEscape(val) {
+      if (val == null) return "";
+      const s = String(val);
+      if (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    }
+
+    let csv = cols.map(csvEscape).join(",") + "\r\n";
+    for (const rec of filteredRecords) {
+      csv += cols.map(c => csvEscape(rec[c])).join(",") + "\r\n";
+    }
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const dateStr = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = "ijsap-desk-reviews-" + dateStr + ".csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // ---- Init ----
+  function initHistory() {
+    $("historyContainer").style.display = "block";
+    $("versionDisplay").textContent = "Content v" + C.CONTENT_VERSION;
+    $("footerVersion").textContent = "Content v" + C.CONTENT_VERSION;
+    initFilters();
+    fetchAll();
+  }
+
+  // Entry point
+  const storedToken = sessionStorage.getItem("ijsap_token");
+  if (storedToken) {
+    token = storedToken;
+    initHistory();
+  } else {
+    showTokenGate();
+  }
+
+})();
+</script>
+</body>
+</html>

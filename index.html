@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IJSaP Desk Review Tool</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Token gate -->
+<div class="token-gate" id="tokenGate">
+  <div class="token-gate-inner">
+    <h1>IJSaP Desk Review Tool</h1>
+    <p id="tokenPromptText"></p>
+    <div class="error-msg" id="tokenErrorMsg"></div>
+    <input type="password" id="tokenInput" placeholder="Access token" autocomplete="off">
+    <div style="margin-top:0.5rem">
+      <button class="btn btn-primary" id="tokenSubmitBtn">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Restore prompt -->
+<div class="restore-prompt" id="restorePrompt">
+  <div class="restore-prompt-inner">
+    <p id="restorePromptText"></p>
+    <div class="btn-group" style="justify-content:center">
+      <button class="btn btn-primary" id="restoreBtn">Restore</button>
+      <button class="btn btn-secondary" id="startFreshBtn">Start fresh</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm dialog -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-inner">
+    <p id="confirmMsg"></p>
+    <div class="btn-group" style="justify-content:center">
+      <button class="btn btn-primary" id="confirmYes">Yes</button>
+      <button class="btn btn-secondary" id="confirmNo">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Main app -->
+<div class="app-container" id="appContainer">
+  <header>
+    <h1>IJSaP Desk Review Tool</h1>
+    <div class="subtitle version-display" id="versionDisplay"></div>
+  </header>
+
+  <!-- Progress bar -->
+  <div class="progress-bar" id="progressBar"></div>
+
+  <!-- Genre Reference Table (collapsible, available from all stages) -->
+  <div style="margin-bottom:1.5rem">
+    <div class="collapsible-header" id="genreRefToggle">
+      <span class="arrow">&#9654;</span> Genre Reference Table
+    </div>
+    <div class="collapsible-body" id="genreRefBody"></div>
+  </div>
+
+  <!-- ==================== STAGE 0: START ==================== -->
+  <div class="stage" id="stage0">
+    <h2>Start</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="fieldSubID">Submission ID</label>
+        <input type="text" id="fieldSubID">
+        <div class="field-error" id="errSubID">Submission ID is required.</div>
+      </div>
+      <div class="form-group">
+        <label for="fieldGenre">Genre</label>
+        <select id="fieldGenre"><option value="">Select genre...</option></select>
+        <div class="field-error" id="errGenre">Genre is required.</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="fieldTitle">Submission title</label>
+      <input type="text" id="fieldTitle">
+      <div class="field-error" id="errTitle">Submission title is required.</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="fieldEditors">Editor(s)</label>
+        <input type="text" id="fieldEditors">
+        <div class="field-error" id="errEditors">Editor name(s) required.</div>
+      </div>
+      <div class="form-group">
+        <label for="fieldDate">Date of assessment</label>
+        <input type="date" id="fieldDate">
+      </div>
+    </div>
+    <div class="rubric-block" id="rubricGeneral"></div>
+    <div class="notice notice-warn" id="genreChangedNotice" style="display:none"></div>
+    <div class="btn-group">
+      <button class="btn btn-primary" id="stage0Next">Continue to Layer 1</button>
+    </div>
+  </div>
+
+  <!-- ==================== STAGE 1: LAYER 1 ==================== -->
+  <div class="stage" id="stage1">
+    <h2>Layer 1: Scope and Fit Check</h2>
+    <div class="rubric-block" id="rubricLayer1Intro"></div>
+    <div class="layer1-columns">
+      <!-- Question 1A -->
+      <div class="q-panel" id="panel1A">
+        <h3>Question 1A</h3>
+        <div class="q-section">
+          <div class="q-section-label">Question</div>
+          <div class="q-section-text" id="q1aQuestion"></div>
+        </div>
+        <div class="q-section">
+          <div class="q-section-label">Criteria</div>
+          <div class="q-section-text" id="q1aCriteria"></div>
+        </div>
+        <div class="q-section">
+          <div class="q-section-label">If No</div>
+          <div class="q-section-text" id="q1aIfNo"></div>
+        </div>
+        <div class="yn-buttons">
+          <button class="btn btn-secondary" data-answer="yes" id="q1aYes">Yes</button>
+          <button class="btn btn-secondary" data-answer="no" id="q1aNo">No</button>
+        </div>
+      </div>
+      <!-- Question 1B -->
+      <div class="q-panel disabled" id="panel1B">
+        <h3>Question 1B</h3>
+        <div class="q-section">
+          <div class="q-section-label">Question</div>
+          <div class="q-section-text" id="q1bQuestion"></div>
+        </div>
+        <div class="q-section">
+          <div class="q-section-label">Criteria</div>
+          <div class="q-section-text" id="q1bCriteria"></div>
+        </div>
+        <div class="q-section">
+          <div class="q-section-label">If No</div>
+          <div class="q-section-text" id="q1bIfNo"></div>
+        </div>
+        <div class="yn-buttons">
+          <button class="btn btn-secondary" data-answer="yes" id="q1bYes">Yes</button>
+          <button class="btn btn-secondary" data-answer="no" id="q1bNo">No</button>
+        </div>
+        <div class="genre-redirect-box" id="genreRedirectBox">
+          <div class="form-group" style="margin-bottom:0.5rem">
+            <label>Which genre would fit better?</label>
+            <select id="suggestedGenreSelect"><option value="">Select...</option></select>
+          </div>
+          <button class="btn btn-primary btn-small" id="confirmGenreRedirect">Confirm</button>
+        </div>
+      </div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-secondary" id="stage1Back">Back to Start</button>
+    </div>
+  </div>
+
+  <!-- ==================== STAGE 2: LAYER 2 ==================== -->
+  <div class="stage" id="stage2">
+    <h2>Layer 2: Alignment Check</h2>
+    <div class="rubric-block" id="rubricLayer2Intro"></div>
+    <div id="layer2Checks"></div>
+    <div class="btn-group">
+      <button class="btn btn-secondary" id="stage2Back">Back to Layer 1</button>
+      <button class="btn btn-primary" id="stage2Next" disabled>Continue</button>
+    </div>
+  </div>
+
+  <!-- ==================== STAGE 3: LAYER 3 ==================== -->
+  <div class="stage" id="stage3">
+    <h2>Layer 3: Genre-Specific Quality Threshold</h2>
+    <div class="rubric-block" id="rubricLayer3Intro"></div>
+    <div class="notice notice-warn" id="formattingBanner" style="display:none"></div>
+    <div id="layer3Content"></div>
+    <div class="l3-primary-buttons" id="l3PrimaryButtons">
+      <button class="btn btn-primary" id="l3Proceed">Proceed to Review</button>
+      <button class="btn btn-outline" id="l3DidNotMeet">Did not fully meet threshold</button>
+    </div>
+    <div class="l3-sub-choice" id="l3SubChoice">
+      <div class="working-guide" id="l3WorkingGuide"></div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="l3Revise">Revise Before Review</button>
+        <button class="btn btn-outline" id="l3DevReturn">Developmental Return</button>
+      </div>
+    </div>
+    <div class="btn-group" style="margin-top:1rem">
+      <button class="btn btn-secondary" id="stage3Back">Back to Layer 2</button>
+    </div>
+  </div>
+
+  <!-- ==================== STAGE 4: ASSESSMENT & EMAIL ==================== -->
+  <div class="stage" id="stage4">
+    <h2>Assessment Record and Email</h2>
+    <div class="notice notice-info" id="reviewNotice" style="display:none"></div>
+    <div class="notice notice-error" id="conflictWarning" style="display:none"></div>
+    <div class="stage4-panels">
+      <!-- Left panel: record -->
+      <div class="panel-left">
+        <div class="panel-card">
+          <h3 style="margin:0 0 0.75rem;font-size:1rem;color:var(--ijsap-teal)">Assessment Record</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="s4SubID">Submission ID</label>
+              <input type="text" id="s4SubID">
+            </div>
+            <div class="form-group">
+              <label for="s4Genre">Genre</label>
+              <input type="text" id="s4Genre" readonly style="background:#eee">
+            </div>
+          </div>
+          <div class="form-group" id="s4SuggestedGenreGroup" style="display:none">
+            <label for="s4SuggestedGenre">Suggested genre</label>
+            <input type="text" id="s4SuggestedGenre" readonly style="background:#eee">
+          </div>
+          <div class="form-group">
+            <label for="s4Title">Submission title</label>
+            <input type="text" id="s4Title">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="s4Date">Date of assessment</label>
+              <input type="date" id="s4Date">
+            </div>
+            <div class="form-group">
+              <label for="s4Editors">Editor(s)</label>
+              <input type="text" id="s4Editors">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="s4ReviewedBy">Reviewed by</label>
+              <input type="text" id="s4ReviewedBy" placeholder="Second co-editor (optional)">
+            </div>
+            <div class="form-group">
+              <label for="s4ReviewDate">Review date</label>
+              <input type="date" id="s4ReviewDate">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Layer of decision</label>
+              <input type="text" id="s4Layer" readonly style="background:#eee">
+            </div>
+            <div class="form-group">
+              <label>Outcome</label>
+              <div id="s4OutcomeBadge" style="margin-top:0.25rem"></div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="s4KeyReason">Key reason for decision</label>
+            <textarea id="s4KeyReason" placeholder="Explain the primary reason for this outcome."></textarea>
+            <div class="field-error" id="errKeyReason">Key reason is required.</div>
+          </div>
+          <div class="form-group">
+            <label for="s4Points">Points to carry forward</label>
+            <textarea id="s4Points" placeholder="Optional notes for future reference."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="s4FormattingNote">Formatting note</label>
+            <textarea id="s4FormattingNote" placeholder="Formatting issues observed (if any)."></textarea>
+          </div>
+          <div class="version-display" id="s4Versions"></div>
+        </div>
+      </div>
+
+      <!-- Right panel: email -->
+      <div class="panel-right">
+        <!-- Tone guidance -->
+        <div style="margin-bottom:1rem">
+          <div class="collapsible-header" id="toneToggle">
+            <span class="arrow">&#9654;</span> Tone guidance
+          </div>
+          <div class="collapsible-body" id="toneBody">
+            <div class="rubric-block" id="rubricTone"></div>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <h3 style="margin:0 0 0.75rem;font-size:1rem;color:var(--ijsap-teal)" id="emailPanelTitle">Generated Email</h3>
+          <div class="deadline-selector" id="deadlineSelector" style="display:none">
+            <label for="deadlineSelect">Deadline:</label>
+            <select id="deadlineSelect"></select>
+          </div>
+          <div class="email-subject-display" id="emailSubject" style="display:none"></div>
+          <div class="add-prompt-warning" id="addWarning"></div>
+          <textarea class="email-editor" id="emailEditor"></textarea>
+          <div class="btn-group">
+            <button class="btn btn-primary btn-small" id="copyEmailBtn">Copy email to clipboard</button>
+            <button class="btn btn-outline btn-small" id="copyRecordBtn">Copy record summary</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Save area -->
+    <div class="save-area">
+      <div class="btn-group" id="saveButtons">
+        <button class="btn btn-primary" id="saveBtn">Save and get shareable link</button>
+        <button class="btn btn-outline" id="saveUpdateBtn" style="display:none">Save updates</button>
+        <button class="btn btn-secondary" id="saveNewBtn" style="display:none">Save as new record</button>
+      </div>
+      <div class="save-status" id="saveStatus"></div>
+      <div class="shareable-url-box" id="shareableUrlBox"></div>
+    </div>
+
+    <div class="btn-group" style="margin-top:1rem">
+      <button class="btn btn-secondary" id="stage4Back">Back</button>
+    </div>
+  </div>
+
+  <footer>
+    <a href="history.html">View assessment history</a>
+    <span style="margin:0 0.5rem">|</span>
+    <span class="version-display" id="footerVersion"></span>
+  </footer>
+</div>
+
+<script src="content.js"></script>
+<script>
+(function() {
+  "use strict";
+
+  const C = window.IJSAP_CONTENT;
+  const META = C.meta;
+
+  // ---- State ----
+  let state = {
+    currentStage: 0,
+    maxStageReached: 0,
+    submissionId: "",
+    title: "",
+    genre: "",
+    editors: "",
+    assessmentDate: "",
+    q1a: null,       // "yes" | "no" | null
+    q1b: null,
+    suggestedGenre: "",
+    layer2Checks: {},  // { checkKey: "pass"|"fail"|null }
+    formattingNote: "",
+    layer3Answer: null,  // "proceed" | "revise" | "developmental" | null
+    outcome: "",
+    layer: "",
+    template: "",
+    emailText: "",
+    emailEdited: false,
+    keyReason: "",
+    points: "",
+    reviewedBy: "",
+    reviewDate: "",
+    savedId: null,
+    savedUpdatedAt: null,
+    shareableUrl: "",
+    stage4BackTarget: 0
+  };
+
+  let token = "";
+  let unsavedWork = false;
+  let loadedFromId = false;
+  let previousGenreForStage3 = "";
+
+  const AUTOSAVE_KEY = "ijsap_draft";
+  const stageNames = ["Start", "Layer 1", "Layer 2", "Layer 3", "Assessment"];
+
+  // ---- Helpers ----
+  function $(id) { return document.getElementById(id); }
+  function safeDecode(v) { try { return decodeURIComponent(v); } catch { return v; } }
+
+  function todayStr() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+
+  function formatDeadline(days) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  }
+
+  function getOutcomeColor(outcome) {
+    const o = META.outcomes.find(x => x.string === outcome);
+    return o ? o.color : "#666";
+  }
+
+  function genreKey(genreName) {
+    const g = META.genres[genreName];
+    return g ? g.key : "";
+  }
+
+  function normalizeGenre(s) {
+    return s.trim().toLowerCase().replace(/s$/, "");
+  }
+
+  function matchGenre(section) {
+    const norm = normalizeGenre(section);
+    for (const g of Object.keys(META.genres)) {
+      if (normalizeGenre(g) === norm) return g;
+    }
+    return "";
+  }
+
+  // ---- API ----
+  function apiHeaders() {
+    return { "Content-Type": "application/json", "x-ijsap-token": token };
+  }
+
+  async function apiCall(method, path, body) {
+    const opts = { method, headers: apiHeaders() };
+    if (body) opts.body = JSON.stringify(body);
+    const resp = await fetch(path, opts);
+    if (resp.status === 403) {
+      sessionStorage.removeItem("ijsap_token");
+      token = "";
+      showTokenGate();
+      throw new Error("403");
+    }
+    return resp;
+  }
+
+  // ---- Token gate ----
+  function showTokenGate() {
+    $("tokenGate").style.display = "flex";
+    $("appContainer").style.display = "none";
+    $("tokenPromptText").textContent = C.ui.tokenPrompt;
+    $("tokenErrorMsg").textContent = C.ui.tokenError;
+    $("tokenInput").value = "";
+    $("tokenInput").focus();
+  }
+
+  async function verifyToken(t) {
+    try {
+      const resp = await fetch("/api/list-records?genre=__verify", {
+        headers: { "x-ijsap-token": t }
+      });
+      return resp.ok;
+    } catch { return false; }
+  }
+
+  $("tokenSubmitBtn").addEventListener("click", async () => {
+    const t = $("tokenInput").value.trim();
+    if (!t) return;
+    $("tokenSubmitBtn").disabled = true;
+    const ok = await verifyToken(t);
+    $("tokenSubmitBtn").disabled = false;
+    if (ok) {
+      token = t;
+      sessionStorage.setItem("ijsap_token", t);
+      $("tokenGate").style.display = "none";
+      initApp();
+    } else {
+      $("tokenErrorMsg").style.display = "block";
+      $("tokenInput").value = "";
+      $("tokenInput").focus();
+    }
+  });
+
+  $("tokenInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("tokenSubmitBtn").click();
+  });
+
+  // ---- Autosave ----
+  function saveAutosave() {
+    try { sessionStorage.setItem(AUTOSAVE_KEY, JSON.stringify(state)); } catch {}
+  }
+
+  function loadAutosave() {
+    try {
+      const raw = sessionStorage.getItem(AUTOSAVE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  function clearAutosave() {
+    sessionStorage.removeItem(AUTOSAVE_KEY);
+  }
+
+  // ---- Beforeunload ----
+  window.addEventListener("beforeunload", (e) => {
+    if (unsavedWork) { e.preventDefault(); e.returnValue = ""; }
+  });
+
+  // ---- Progress bar ----
+  function renderProgress() {
+    const bar = $("progressBar");
+    bar.innerHTML = "";
+    for (let i = 0; i < 5; i++) {
+      if (i > 0) {
+        const conn = document.createElement("div");
+        conn.className = "progress-connector" + (i <= state.currentStage ? " completed" : "");
+        bar.appendChild(conn);
+      }
+      const step = document.createElement("div");
+      const isCompleted = i < state.currentStage;
+      const isCurrent = i === state.currentStage;
+      step.className = "progress-step" + (isCompleted ? " completed" : "") + (isCurrent ? " current" : "");
+      if (i <= state.maxStageReached && i !== state.currentStage) {
+        step.classList.add("clickable");
+        step.addEventListener("click", () => goToStage(i));
+      }
+      const circle = document.createElement("span");
+      circle.className = "step-circle";
+      circle.textContent = i;
+      const label = document.createElement("span");
+      label.className = "step-label";
+      label.textContent = stageNames[i];
+      step.appendChild(circle);
+      step.appendChild(label);
+      bar.appendChild(step);
+    }
+  }
+
+  // ---- Stage navigation ----
+  function goToStage(n) {
+    // Genre change check: if going to stage 0 and then coming back
+    if (n === 0) {
+      previousGenreForStage3 = state.genre;
+    }
+    document.querySelectorAll(".stage").forEach(s => s.classList.remove("active"));
+    $("stage" + n).classList.add("active");
+    state.currentStage = n;
+    if (n > state.maxStageReached) state.maxStageReached = n;
+    renderProgress();
+
+    if (n === 1) renderStage1();
+    if (n === 2) renderStage2();
+    if (n === 3) renderStage3();
+    if (n === 4) enterStage4();
+
+    saveAutosave();
+    window.scrollTo(0, 0);
+  }
+
+  // ---- Stage 0 ----
+  function initStage0() {
+    // Populate genre dropdown
+    const sel = $("fieldGenre");
+    for (const g of Object.keys(META.genres)) {
+      const opt = document.createElement("option");
+      opt.value = g;
+      opt.textContent = g;
+      sel.appendChild(opt);
+    }
+
+    $("rubricGeneral").textContent = C.rubric.general;
+    $("fieldDate").value = todayStr();
+
+    // URL params
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("submissionID")) $("fieldSubID").value = safeDecode(params.get("submissionID"));
+    if (params.get("title")) $("fieldTitle").value = safeDecode(params.get("title"));
+    if (params.get("section")) {
+      const matched = matchGenre(safeDecode(params.get("section")));
+      if (matched) $("fieldGenre").value = matched;
+    }
+  }
+
+  $("stage0Next").addEventListener("click", () => {
+    let valid = true;
+    [["fieldSubID","errSubID"],["fieldTitle","errTitle"],["fieldEditors","errEditors"]].forEach(([f,e]) => {
+      const ok = $(f).value.trim() !== "";
+      $(e).style.display = ok ? "none" : "block";
+      if (!ok) valid = false;
+    });
+    const genreOk = $("fieldGenre").value !== "";
+    $("errGenre").style.display = genreOk ? "none" : "block";
+    if (!genreOk) valid = false;
+    if (!valid) return;
+
+    // Check genre change after stage 3
+    const newGenre = $("fieldGenre").value;
+    if (previousGenreForStage3 && previousGenreForStage3 !== newGenre && state.layer3Answer !== null) {
+      state.layer3Answer = null;
+      state.outcome = "";
+      state.layer = "";
+      state.template = "";
+      $("genreChangedNotice").textContent = C.ui.genreChangedNotice;
+      $("genreChangedNotice").style.display = "block";
+    } else {
+      $("genreChangedNotice").style.display = "none";
+    }
+
+    state.submissionId = $("fieldSubID").value.trim();
+    state.title = $("fieldTitle").value.trim();
+    state.genre = newGenre;
+    state.editors = $("fieldEditors").value.trim();
+    state.assessmentDate = $("fieldDate").value;
+    unsavedWork = true;
+    goToStage(1);
+  });
+
+  // ---- Stage 1 ----
+  function renderStage1() {
+    $("rubricLayer1Intro").textContent = C.rubric.layer1.intro;
+    $("q1aQuestion").textContent = C.rubric.layer1.q1a.question;
+    $("q1aCriteria").textContent = C.rubric.layer1.q1a.criteria;
+    $("q1aIfNo").textContent = C.rubric.layer1.q1a.ifNo;
+    $("q1bQuestion").textContent = C.rubric.layer1.q1b.question;
+    $("q1bCriteria").textContent = C.rubric.layer1.q1b.criteria;
+    $("q1bIfNo").textContent = C.rubric.layer1.q1b.ifNo;
+
+    // Restore state
+    updateQ1aButtons();
+    updateQ1bButtons();
+    if (state.q1a === "yes") {
+      $("panel1B").classList.remove("disabled");
+    } else {
+      $("panel1B").classList.add("disabled");
+    }
+  }
+
+  function updateQ1aButtons() {
+    $("q1aYes").className = "btn " + (state.q1a === "yes" ? "selected-yes" : "btn-secondary");
+    $("q1aNo").className = "btn " + (state.q1a === "no" ? "selected-no" : "btn-secondary");
+  }
+
+  function updateQ1bButtons() {
+    $("q1bYes").className = "btn " + (state.q1b === "yes" ? "selected-yes" : "btn-secondary");
+    $("q1bNo").className = "btn " + (state.q1b === "no" ? "selected-no" : "btn-secondary");
+    $("genreRedirectBox").style.display = state.q1b === "no" ? "block" : "none";
+  }
+
+  $("q1aYes").addEventListener("click", () => {
+    state.q1a = "yes";
+    updateQ1aButtons();
+    $("panel1B").classList.remove("disabled");
+    saveAutosave();
+  });
+
+  $("q1aNo").addEventListener("click", () => {
+    state.q1a = "no";
+    state.q1b = null;
+    updateQ1aButtons();
+    updateQ1bButtons();
+    $("panel1B").classList.add("disabled");
+    state.outcome = "Not Suitable for IJSaP";
+    state.layer = "Layer 1";
+    state.template = "notSuitable";
+    state.suggestedGenre = "";
+    state.stage4BackTarget = 1;
+    goToStage(4);
+  });
+
+  $("q1bYes").addEventListener("click", () => {
+    state.q1b = "yes";
+    updateQ1bButtons();
+    saveAutosave();
+    goToStage(2);
+  });
+
+  $("q1bNo").addEventListener("click", () => {
+    state.q1b = "no";
+    updateQ1bButtons();
+    // Populate suggested genre dropdown
+    const sel = $("suggestedGenreSelect");
+    sel.innerHTML = '<option value="">Select...</option>';
+    for (const g of Object.keys(META.genres)) {
+      if (g !== state.genre) {
+        const opt = document.createElement("option");
+        opt.value = g;
+        opt.textContent = g;
+        sel.appendChild(opt);
+      }
+    }
+    const noFit = document.createElement("option");
+    noFit.value = "__noFit";
+    noFit.textContent = "No genre fits";
+    sel.appendChild(noFit);
+    saveAutosave();
+  });
+
+  $("confirmGenreRedirect").addEventListener("click", () => {
+    const val = $("suggestedGenreSelect").value;
+    if (!val) return;
+    if (val === "__noFit") {
+      state.outcome = "Not Suitable for IJSaP";
+      state.layer = "Layer 1";
+      state.template = "notSuitable";
+      state.suggestedGenre = "";
+    } else {
+      state.outcome = "Genre Redirect";
+      state.layer = "Layer 1";
+      state.template = "genreRedirect";
+      state.suggestedGenre = val;
+      state.keyReason = "Genre mismatch: better fit as " + val + ".";
+    }
+    state.stage4BackTarget = 1;
+    goToStage(4);
+  });
+
+  $("stage1Back").addEventListener("click", () => {
+    previousGenreForStage3 = state.genre;
+    goToStage(0);
+  });
+
+  // ---- Stage 2 ----
+  const checkOrder = ["wordCount", "fileFormat", "anonymization", "priorPublication", "ethicsStatement", "formatting"];
+
+  function renderStage2() {
+    $("rubricLayer2Intro").textContent = C.rubric.layer2.intro;
+    const container = $("layer2Checks");
+    container.innerHTML = "";
+
+    // Init check state if needed
+    for (const key of checkOrder) {
+      if (!(key in state.layer2Checks)) state.layer2Checks[key] = null;
+    }
+
+    for (const key of checkOrder) {
+      const check = C.rubric.layer2.checks[key];
+      const row = document.createElement("div");
+      row.className = "check-row";
+
+      const info = document.createElement("div");
+      info.className = "check-info";
+
+      const lbl = document.createElement("div");
+      lbl.className = "check-label";
+      lbl.textContent = check.label;
+      info.appendChild(lbl);
+
+      const txt = document.createElement("div");
+      txt.className = "check-text";
+      txt.textContent = check.text;
+      info.appendChild(txt);
+
+      // Genre-specific notes
+      if (key === "wordCount") {
+        const gInfo = META.genres[state.genre];
+        if (gInfo) {
+          const note = document.createElement("div");
+          note.className = "check-genre-note";
+          note.textContent = "Limit for " + state.genre + ": " + gInfo.wordLimitText + " words";
+          info.appendChild(note);
+        }
+      }
+
+      if (key === "anonymization") {
+        const gInfo = META.genres[state.genre];
+        if (gInfo) {
+          const note = document.createElement("div");
+          note.className = "check-genre-note";
+          note.textContent = gInfo.anonymizationLabel;
+          info.appendChild(note);
+        }
+      }
+
+      row.appendChild(info);
+
+      // Toggle
+      const tg = document.createElement("div");
+      tg.className = "toggle-group";
+
+      const passBtn = document.createElement("button");
+      passBtn.textContent = "Pass";
+      const failBtn = document.createElement("button");
+      failBtn.textContent = "Fail";
+
+      // Reflective Essay: anonymization locked to Pass
+      const isExempt = key === "anonymization" && META.genres[state.genre]?.anonymization === "exempt";
+      if (isExempt) {
+        state.layer2Checks[key] = "pass";
+      }
+
+      function updateToggle() {
+        passBtn.className = state.layer2Checks[key] === "pass" ? "pass-active" : "";
+        failBtn.className = state.layer2Checks[key] === "fail" ? "fail-active" : "";
+        checkAllSet();
+      }
+
+      if (isExempt) {
+        passBtn.disabled = true;
+        failBtn.disabled = true;
+      } else {
+        passBtn.addEventListener("click", () => {
+          state.layer2Checks[key] = "pass";
+          updateToggle();
+          saveAutosave();
+        });
+        failBtn.addEventListener("click", () => {
+          state.layer2Checks[key] = "fail";
+          updateToggle();
+          saveAutosave();
+        });
+      }
+
+      tg.appendChild(passBtn);
+      tg.appendChild(failBtn);
+      row.appendChild(tg);
+      container.appendChild(row);
+      updateToggle();
+    }
+  }
+
+  function checkAllSet() {
+    const allSet = checkOrder.every(k => state.layer2Checks[k] !== null);
+    $("stage2Next").disabled = !allSet;
+  }
+
+  $("stage2Next").addEventListener("click", () => {
+    const checks = state.layer2Checks;
+
+    // Precedence 1: prior publication fail
+    if (checks.priorPublication === "fail") {
+      state.outcome = "Not Suitable for IJSaP";
+      state.layer = "Layer 2";
+      state.template = "priorPublication";
+      state.stage4BackTarget = 2;
+      goToStage(4);
+      return;
+    }
+
+    // Collect non-formatting, non-priorPublication failures
+    const adminFailKeys = ["wordCount", "fileFormat", "anonymization", "ethicsStatement"]
+      .filter(k => checks[k] === "fail");
+
+    // Precedence 2: any admin failure
+    if (adminFailKeys.length > 0) {
+      // If formatting also failed, include it
+      if (checks.formatting === "fail") adminFailKeys.push("formatting");
+      state.outcome = "Administrative Return";
+      state.layer = "Layer 2";
+      state.template = "adminReturn";
+      state._failedChecks = adminFailKeys;
+      state.stage4BackTarget = 2;
+      goToStage(4);
+      return;
+    }
+
+    // Precedence 3: formatting only
+    if (checks.formatting === "fail") {
+      $("formattingBanner").textContent = C.ui.formattingBanner;
+      $("formattingBanner").style.display = "block";
+    } else {
+      $("formattingBanner").style.display = "none";
+    }
+
+    state.stage4BackTarget = 3;
+    goToStage(3);
+  });
+
+  $("stage2Back").addEventListener("click", () => goToStage(1));
+
+  // ---- Stage 3 ----
+  function renderStage3() {
+    $("rubricLayer3Intro").textContent = C.rubric.layer3.intro;
+
+    const gKey = genreKey(state.genre);
+    const gData = C.rubric.layer3.genres[gKey];
+    if (!gData) return;
+
+    const container = $("layer3Content");
+    container.innerHTML = "";
+
+    // Threshold question
+    const threshDiv = document.createElement("div");
+    threshDiv.className = "rubric-block";
+    threshDiv.style.fontWeight = "600";
+    threshDiv.textContent = gData.threshold;
+    container.appendChild(threshDiv);
+
+    // Note
+    if (gData.note) {
+      const noteDiv = document.createElement("div");
+      noteDiv.className = "rubric-block";
+      noteDiv.textContent = gData.note;
+      container.appendChild(noteDiv);
+    }
+
+    // Findings table
+    const table = document.createElement("table");
+    table.className = "findings-table";
+    const thead = document.createElement("thead");
+    const hrow = document.createElement("tr");
+    ["Finding", "Outcome", "Notes for editor"].forEach(h => {
+      const th = document.createElement("th");
+      th.textContent = h;
+      hrow.appendChild(th);
+    });
+    thead.appendChild(hrow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    for (const f of gData.findings) {
+      const tr = document.createElement("tr");
+      [f.finding, f.outcome, f.notes].forEach(v => {
+        const td = document.createElement("td");
+        td.textContent = v;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    container.appendChild(table);
+
+    // Update proceed button label
+    const isReflective = state.genre === "Reflective Essay";
+    $("l3Proceed").textContent = isReflective ? "Proceed to Dialogic Review" : "Proceed to Review";
+
+    // Working guide text
+    $("l3WorkingGuide").textContent = "Revise Before Review applies when the required changes are specific and bounded and the submission is close to ready. Developmental Return applies when the work requires more substantial rethinking before it is ready for external scrutiny.";
+
+    // Reset sub-choice visibility
+    $("l3SubChoice").style.display = "none";
+
+    // If already answered, reflect that
+    if (state.layer3Answer === "proceed") {
+      $("l3Proceed").classList.add("selected-yes");
+    } else {
+      $("l3Proceed").classList.remove("selected-yes");
+    }
+  }
+
+  $("l3Proceed").addEventListener("click", () => {
+    state.layer3Answer = "proceed";
+    state.outcome = "Proceed to Review";
+    state.layer = "Layer 3";
+    state.template = "reviewerNotes";
+    state.stage4BackTarget = 3;
+    if (state.layer2Checks.formatting === "fail") {
+      state.formattingNote = state.formattingNote || "Formatting issues noted (12pt Calibri, single spacing, 1-inch margins).";
+    }
+    goToStage(4);
+  });
+
+  $("l3DidNotMeet").addEventListener("click", () => {
+    $("l3SubChoice").style.display = "block";
+  });
+
+  $("l3Revise").addEventListener("click", () => {
+    state.layer3Answer = "revise";
+    state.outcome = "Revise Before Review";
+    state.layer = "Layer 3";
+    state.template = "reviseBeforeReview";
+    state.stage4BackTarget = 3;
+    if (state.layer2Checks.formatting === "fail") {
+      state.formattingNote = state.formattingNote || "Formatting issues noted (12pt Calibri, single spacing, 1-inch margins).";
+    }
+    goToStage(4);
+  });
+
+  $("l3DevReturn").addEventListener("click", () => {
+    state.layer3Answer = "developmental";
+    state.outcome = "Developmental Return";
+    state.layer = "Layer 3";
+    state.template = "developmentalReturn";
+    state.stage4BackTarget = 3;
+    if (state.layer2Checks.formatting === "fail") {
+      state.formattingNote = state.formattingNote || "Formatting issues noted (12pt Calibri, single spacing, 1-inch margins).";
+    }
+    goToStage(4);
+  });
+
+  $("stage3Back").addEventListener("click", () => goToStage(2));
+
+  // ---- Stage 4 ----
+  let lastGeneratedEmail = "";
+
+  function generateEmail() {
+    const tpl = C.emails[state.template];
+    if (!tpl) return "";
+
+    let text = tpl.body;
+    const gInfo = META.genres[state.genre];
+
+    // Simple tokens
+    text = text.replace(/\{\{submissionID\}\}/g, state.submissionId);
+    text = text.replace(/\{\{title\}\}/g, state.title);
+    text = text.replace(/\{\{genre\}\}/g, state.genre);
+    text = text.replace(/\{\{suggestedGenre\}\}/g, state.suggestedGenre);
+    text = text.replace(/\{\{editorNames\}\}/g, state.editors);
+    text = text.replace(/\{\{date\}\}/g, state.assessmentDate);
+    text = text.replace(/\{\{proposalTemplateURL\}\}/g, META.links.proposalTemplateURL);
+    text = text.replace(/\{\{wordLimitText\}\}/g, gInfo ? gInfo.wordLimitText : "");
+
+    // Deadline
+    const deadlineConf = META.deadlines[state.outcome];
+    if (deadlineConf) {
+      const sel = $("deadlineSelect");
+      const days = parseInt(sel.value) || deadlineConf.defaultDays;
+      const deadlineStr = formatDeadline(days);
+      text = text.replace(/\{\{deadline\}\}/g, deadlineStr);
+      const deadlineFrag = C.fragments.deadline
+        .replace(/\{\{submissionID\}\}/g, state.submissionId)
+        .replace(/\{\{deadline\}\}/g, deadlineStr);
+      text = text.replace(/\{\{>deadline\}\}/g, deadlineFrag);
+    } else {
+      text = text.replace(/\{\{>deadline\}\}/g, "");
+    }
+
+    // Failed checks fragment
+    if (state._failedChecks && state._failedChecks.length > 0) {
+      let bullets = state._failedChecks.map(k => {
+        let frag = C.fragments.check[k] || "";
+        frag = frag.replace(/\{\{genre\}\}/g, state.genre);
+        frag = frag.replace(/\{\{wordLimitText\}\}/g, gInfo ? gInfo.wordLimitText : "");
+        return "- " + frag;
+      }).join("\n");
+      text = text.replace(/\{\{>failedChecks\}\}/g, bullets);
+    } else {
+      text = text.replace(/\{\{>failedChecks\}\}/g, "");
+    }
+
+    // Genre criteria fragment
+    if (state.suggestedGenre) {
+      const sgKey = genreKey(state.suggestedGenre);
+      const criteria = C.fragments.genreCriteria[sgKey] || "";
+      text = text.replace(/\{\{>genreCriteria\}\}/g, criteria);
+    } else {
+      text = text.replace(/\{\{>genreCriteria\}\}/g, "");
+    }
+
+    // Reflective essay caveat
+    if (state.genre === "Reflective Essay" || state.suggestedGenre === "Reflective Essay") {
+      text = text.replace(/\{\{>reflectiveEssayCaveat\}\}/g, C.fragments.reflectiveEssayCaveat);
+    } else {
+      text = text.replace(/\{\{>reflectiveEssayCaveat\}\}/g, "");
+    }
+
+    return text;
+  }
+
+  function enterStage4() {
+    // Populate record fields
+    $("s4SubID").value = state.submissionId;
+    $("s4Title").value = state.title;
+    $("s4Genre").value = state.genre;
+    $("s4Date").value = state.assessmentDate;
+    $("s4Editors").value = state.editors;
+    $("s4Layer").value = state.layer;
+    $("s4KeyReason").value = state.keyReason;
+    $("s4Points").value = state.points;
+    $("s4FormattingNote").value = state.formattingNote;
+    $("s4ReviewedBy").value = state.reviewedBy;
+    $("s4ReviewDate").value = state.reviewDate;
+
+    // Suggested genre
+    if (state.outcome === "Genre Redirect" && state.suggestedGenre) {
+      $("s4SuggestedGenreGroup").style.display = "block";
+      $("s4SuggestedGenre").value = state.suggestedGenre;
+    } else {
+      $("s4SuggestedGenreGroup").style.display = "none";
+    }
+
+    // Outcome badge
+    const badgeDiv = $("s4OutcomeBadge");
+    badgeDiv.innerHTML = "";
+    const badge = document.createElement("span");
+    badge.className = "outcome-badge";
+    badge.style.backgroundColor = getOutcomeColor(state.outcome);
+    const displayOutcome = (state.outcome === "Proceed to Review" && state.genre === "Reflective Essay")
+      ? "Proceed to Dialogic Review" : state.outcome;
+    badge.textContent = displayOutcome;
+    badgeDiv.appendChild(badge);
+
+    // Versions
+    $("s4Versions").textContent = "Rubric: " + C.RUBRIC_VERSION + " | Content: " + C.CONTENT_VERSION;
+
+    // Email panel title
+    const isProceed = state.outcome === "Proceed to Review";
+    $("emailPanelTitle").textContent = isProceed ? "Reviewer Guidance Notes" : "Generated Email";
+    $("copyEmailBtn").textContent = isProceed ? "Copy reviewer notes" : "Copy email to clipboard";
+
+    // Subject
+    const tpl = C.emails[state.template];
+    if (tpl && tpl.subject) {
+      $("emailSubject").style.display = "block";
+      $("emailSubject").textContent = "Subject: " + tpl.subject.replace(/\{\{submissionID\}\}/g, state.submissionId);
+    } else {
+      $("emailSubject").style.display = "none";
+    }
+
+    // Deadline selector
+    const deadlineConf = META.deadlines[state.outcome];
+    if (deadlineConf) {
+      $("deadlineSelector").style.display = "block";
+      const sel = $("deadlineSelect");
+      sel.innerHTML = "";
+      for (const d of deadlineConf.optionsDays) {
+        const opt = document.createElement("option");
+        opt.value = d;
+        const weeks = d / 7;
+        opt.textContent = d + " days (" + weeks + " week" + (weeks > 1 ? "s" : "") + ") - " + formatDeadline(d);
+        sel.appendChild(opt);
+      }
+      sel.value = deadlineConf.defaultDays;
+    } else {
+      $("deadlineSelector").style.display = "none";
+    }
+
+    // Generate email
+    const newEmail = generateEmail();
+    if (!state.emailEdited || state.emailText === lastGeneratedEmail || state.emailText === "") {
+      state.emailText = newEmail;
+      state.emailEdited = false;
+    }
+    lastGeneratedEmail = newEmail;
+    $("emailEditor").value = state.emailText;
+
+    // Tone guidance
+    $("rubricTone").textContent = C.rubric.tone;
+
+    // Review notice
+    if (loadedFromId) {
+      $("reviewNotice").textContent = C.ui.reviewNotice;
+      $("reviewNotice").style.display = "block";
+    }
+
+    // Save buttons
+    updateSaveButtons();
+
+    // ADD warning check
+    checkAddWarning();
+  }
+
+  function updateSaveButtons() {
+    if (state.savedId) {
+      $("saveBtn").style.display = "none";
+      $("saveUpdateBtn").style.display = "inline-flex";
+      $("saveNewBtn").style.display = "inline-flex";
+    } else {
+      $("saveBtn").style.display = "inline-flex";
+      $("saveUpdateBtn").style.display = "none";
+      $("saveNewBtn").style.display = "none";
+    }
+  }
+
+  function checkAddWarning() {
+    const text = $("emailEditor").value;
+    if (/\[ADD:/.test(text)) {
+      $("addWarning").textContent = C.ui.addWarning;
+      $("addWarning").style.display = "block";
+    } else {
+      $("addWarning").style.display = "none";
+    }
+  }
+
+  // Deadline change
+  $("deadlineSelect").addEventListener("change", () => {
+    const newEmail = generateEmail();
+    if (state.emailEdited && state.emailText !== lastGeneratedEmail) {
+      showConfirm("Regenerating will replace your edits. Continue?", () => {
+        state.emailText = newEmail;
+        state.emailEdited = false;
+        lastGeneratedEmail = newEmail;
+        $("emailEditor").value = newEmail;
+        checkAddWarning();
+      });
+    } else {
+      state.emailText = newEmail;
+      state.emailEdited = false;
+      lastGeneratedEmail = newEmail;
+      $("emailEditor").value = newEmail;
+      checkAddWarning();
+    }
+  });
+
+  // Track email edits
+  $("emailEditor").addEventListener("input", () => {
+    state.emailText = $("emailEditor").value;
+    state.emailEdited = true;
+    checkAddWarning();
+    saveAutosave();
+  });
+
+  // Reviewed by auto-date
+  $("s4ReviewedBy").addEventListener("input", () => {
+    state.reviewedBy = $("s4ReviewedBy").value;
+    if (state.reviewedBy.trim() && !$("s4ReviewDate").value) {
+      $("s4ReviewDate").value = todayStr();
+      state.reviewDate = $("s4ReviewDate").value;
+    }
+    saveAutosave();
+  });
+
+  $("s4ReviewDate").addEventListener("change", () => {
+    state.reviewDate = $("s4ReviewDate").value;
+    saveAutosave();
+  });
+
+  // Track field changes on stage 4
+  ["s4SubID","s4Title","s4Date","s4Editors","s4KeyReason","s4Points","s4FormattingNote"].forEach(id => {
+    $(id).addEventListener("input", () => {
+      unsavedWork = true;
+      saveAutosave();
+    });
+  });
+
+  // Confirm helper
+  function showConfirm(msg, onYes) {
+    $("confirmMsg").textContent = msg;
+    $("confirmOverlay").classList.add("show");
+    const yesHandler = () => {
+      $("confirmOverlay").classList.remove("show");
+      $("confirmYes").removeEventListener("click", yesHandler);
+      onYes();
+    };
+    $("confirmYes").addEventListener("click", yesHandler);
+    $("confirmNo").onclick = () => $("confirmOverlay").classList.remove("show");
+  }
+
+  // Copy email
+  $("copyEmailBtn").addEventListener("click", () => {
+    checkAddWarning();
+    navigator.clipboard.writeText($("emailEditor").value).then(() => {
+      const btn = $("copyEmailBtn");
+      const orig = btn.textContent;
+      btn.textContent = "Copied";
+      setTimeout(() => btn.textContent = orig, 3000);
+    });
+  });
+
+  // Copy record summary
+  $("copyRecordBtn").addEventListener("click", () => {
+    readStage4Fields();
+    let summary = C.fragments.recordSummary;
+    summary = summary.replace(/\{\{submissionID\}\}/g, state.submissionId);
+    summary = summary.replace(/\{\{title\}\}/g, state.title);
+    summary = summary.replace(/\{\{genre\}\}/g, state.genre);
+    summary = summary.replace(/\{\{outcome\}\}/g, state.outcome);
+    summary = summary.replace(/\{\{layer\}\}/g, state.layer);
+    summary = summary.replace(/\{\{keyReason\}\}/g, state.keyReason);
+    summary = summary.replace(/\{\{editorNames\}\}/g, state.editors);
+    summary = summary.replace(/\{\{date\}\}/g, state.assessmentDate);
+
+    // Omit reviewed by line if empty
+    if (!state.reviewedBy.trim()) {
+      summary = summary.replace(/\nReviewed by: \{\{reviewedBy\}\}/, "");
+      summary = summary.replace(/\{\{reviewedBy\}\}/g, "");
+    } else {
+      summary = summary.replace(/\{\{reviewedBy\}\}/g, state.reviewedBy);
+    }
+
+    // Omit record link if not saved
+    if (!state.shareableUrl) {
+      summary = summary.replace(/\nRecord link: \{\{shareableURL\}\}/, "");
+      summary = summary.replace(/\{\{shareableURL\}\}/g, "");
+    } else {
+      summary = summary.replace(/\{\{shareableURL\}\}/g, state.shareableUrl);
+    }
+
+    navigator.clipboard.writeText(summary).then(() => {
+      const btn = $("copyRecordBtn");
+      const orig = btn.textContent;
+      btn.textContent = "Copied";
+      setTimeout(() => btn.textContent = orig, 3000);
+    });
+  });
+
+  // Read editable stage 4 fields into state
+  function readStage4Fields() {
+    state.submissionId = $("s4SubID").value.trim();
+    state.title = $("s4Title").value.trim();
+    state.assessmentDate = $("s4Date").value;
+    state.editors = $("s4Editors").value.trim();
+    state.keyReason = $("s4KeyReason").value.trim();
+    state.points = $("s4Points").value.trim();
+    state.formattingNote = $("s4FormattingNote").value.trim();
+    state.reviewedBy = $("s4ReviewedBy").value.trim();
+    state.reviewDate = $("s4ReviewDate").value;
+    state.emailText = $("emailEditor").value;
+  }
+
+  function buildPayload() {
+    readStage4Fields();
+    return {
+      submission_id: state.submissionId,
+      submission_title: state.title,
+      genre: state.genre,
+      suggested_genre: state.suggestedGenre || null,
+      editors: state.editors,
+      assessment_date: state.assessmentDate,
+      reviewed_by: state.reviewedBy || null,
+      reviewed_date: state.reviewDate || null,
+      layer_of_decision: state.layer,
+      outcome: state.outcome,
+      key_reason: state.keyReason,
+      points_to_carry_forward: state.points || null,
+      formatting_note: state.formattingNote || null,
+      email_text: state.emailText,
+      rubric_version: C.RUBRIC_VERSION,
+      content_version: C.CONTENT_VERSION
+    };
+  }
+
+  function showSaveStatus(html, isError) {
+    const el = $("saveStatus");
+    el.innerHTML = "";
+    el.textContent = html;
+    el.className = "save-status" + (isError ? " notice-error" : "");
+  }
+
+  // Save (create)
+  $("saveBtn").addEventListener("click", async () => {
+    readStage4Fields();
+    if (!state.keyReason) {
+      $("errKeyReason").style.display = "block";
+      return;
+    }
+    $("errKeyReason").style.display = "none";
+
+    $("saveBtn").disabled = true;
+    showSaveStatus("Saving...", false);
+
+    try {
+      const resp = await apiCall("POST", "/api/create-record", buildPayload());
+      const data = await resp.json();
+      if (resp.ok) {
+        state.savedId = data.id;
+        state.shareableUrl = data.url;
+        // Fetch the record to get updated_at
+        const getResp = await apiCall("GET", "/api/get-record?id=" + data.id);
+        if (getResp.ok) {
+          const rec = await getResp.json();
+          state.savedUpdatedAt = rec.updated_at;
+        }
+        showSaveStatus("Saved.", false);
+        $("shareableUrlBox").style.display = "block";
+        $("shareableUrlBox").innerHTML = "";
+        const urlSpan = document.createElement("span");
+        urlSpan.textContent = data.url;
+        $("shareableUrlBox").appendChild(urlSpan);
+        const copyUrlBtn = document.createElement("button");
+        copyUrlBtn.className = "btn btn-small btn-outline";
+        copyUrlBtn.textContent = "Copy link";
+        copyUrlBtn.style.marginLeft = "0.5rem";
+        copyUrlBtn.addEventListener("click", () => {
+          navigator.clipboard.writeText(data.url).then(() => {
+            copyUrlBtn.textContent = "Copied";
+            setTimeout(() => copyUrlBtn.textContent = "Copy link", 3000);
+          });
+        });
+        $("shareableUrlBox").appendChild(copyUrlBtn);
+        unsavedWork = false;
+        clearAutosave();
+        updateSaveButtons();
+      } else {
+        showSaveStatus(C.ui.saveError, true);
+      }
+    } catch {
+      showSaveStatus(C.ui.saveError, true);
+    }
+    $("saveBtn").disabled = false;
+  });
+
+  // Save updates
+  $("saveUpdateBtn").addEventListener("click", async () => {
+    readStage4Fields();
+    if (!state.keyReason) {
+      $("errKeyReason").style.display = "block";
+      return;
+    }
+    $("errKeyReason").style.display = "none";
+
+    $("saveUpdateBtn").disabled = true;
+    showSaveStatus("Saving...", false);
+
+    try {
+      const payload = buildPayload();
+      payload.id = state.savedId;
+      payload.expected_updated_at = state.savedUpdatedAt;
+      const resp = await apiCall("POST", "/api/update-record", payload);
+      const data = await resp.json();
+
+      if (resp.ok) {
+        state.savedUpdatedAt = data.updated_at;
+        showSaveStatus("Saved.", false);
+        unsavedWork = false;
+        clearAutosave();
+        $("conflictWarning").style.display = "none";
+      } else if (resp.status === 409) {
+        // Conflict
+        $("conflictWarning").innerHTML = "";
+        $("conflictWarning").style.display = "block";
+        const msg = document.createElement("span");
+        msg.textContent = C.ui.conflictWarning + " ";
+        $("conflictWarning").appendChild(msg);
+
+        const reloadBtn = document.createElement("button");
+        reloadBtn.className = "btn btn-small btn-primary";
+        reloadBtn.textContent = "Reload record";
+        reloadBtn.addEventListener("click", () => {
+          showConfirm("Reloading will discard your local changes. Continue?", async () => {
+            await loadRecord(state.savedId);
+          });
+        });
+        $("conflictWarning").appendChild(reloadBtn);
+
+        const newBtn = document.createElement("button");
+        newBtn.className = "btn btn-small btn-outline";
+        newBtn.textContent = "Save as new record";
+        newBtn.style.marginLeft = "0.5rem";
+        newBtn.addEventListener("click", () => $("saveNewBtn").click());
+        $("conflictWarning").appendChild(newBtn);
+
+        showSaveStatus("", false);
+      } else {
+        showSaveStatus(C.ui.saveError, true);
+      }
+    } catch {
+      showSaveStatus(C.ui.saveError, true);
+    }
+    $("saveUpdateBtn").disabled = false;
+  });
+
+  // Save as new
+  $("saveNewBtn").addEventListener("click", async () => {
+    readStage4Fields();
+    if (!state.keyReason) {
+      $("errKeyReason").style.display = "block";
+      return;
+    }
+    $("errKeyReason").style.display = "none";
+
+    $("saveNewBtn").disabled = true;
+    showSaveStatus("Saving as new record...", false);
+
+    try {
+      const resp = await apiCall("POST", "/api/create-record", buildPayload());
+      const data = await resp.json();
+      if (resp.ok) {
+        state.savedId = data.id;
+        state.shareableUrl = data.url;
+        const getResp = await apiCall("GET", "/api/get-record?id=" + data.id);
+        if (getResp.ok) {
+          const rec = await getResp.json();
+          state.savedUpdatedAt = rec.updated_at;
+        }
+        showSaveStatus("Saved as new record.", false);
+        $("shareableUrlBox").style.display = "block";
+        $("shareableUrlBox").innerHTML = "";
+        const urlSpan = document.createElement("span");
+        urlSpan.textContent = data.url;
+        $("shareableUrlBox").appendChild(urlSpan);
+        const copyUrlBtn = document.createElement("button");
+        copyUrlBtn.className = "btn btn-small btn-outline";
+        copyUrlBtn.textContent = "Copy link";
+        copyUrlBtn.style.marginLeft = "0.5rem";
+        copyUrlBtn.addEventListener("click", () => {
+          navigator.clipboard.writeText(data.url).then(() => {
+            copyUrlBtn.textContent = "Copied";
+            setTimeout(() => copyUrlBtn.textContent = "Copy link", 3000);
+          });
+        });
+        $("shareableUrlBox").appendChild(copyUrlBtn);
+        unsavedWork = false;
+        clearAutosave();
+        updateSaveButtons();
+        $("conflictWarning").style.display = "none";
+        // Update URL without reload
+        window.history.replaceState(null, "", "/?id=" + data.id);
+      } else {
+        showSaveStatus(C.ui.saveError, true);
+      }
+    } catch {
+      showSaveStatus(C.ui.saveError, true);
+    }
+    $("saveNewBtn").disabled = false;
+  });
+
+  // Stage 4 back
+  $("stage4Back").addEventListener("click", () => {
+    goToStage(state.stage4BackTarget || 0);
+  });
+
+  // ---- Load record by ID ----
+  async function loadRecord(id) {
+    try {
+      const resp = await apiCall("GET", "/api/get-record?id=" + id);
+      if (resp.status === 404) {
+        showLoadError(C.ui.recordNotFound);
+        return;
+      }
+      if (!resp.ok) {
+        showLoadError(C.ui.networkError);
+        return;
+      }
+      const rec = await resp.json();
+      loadedFromId = true;
+
+      state.submissionId = rec.submission_id;
+      state.title = rec.submission_title;
+      state.genre = rec.genre;
+      state.suggestedGenre = rec.suggested_genre || "";
+      state.editors = rec.editors;
+      state.assessmentDate = rec.assessment_date;
+      state.reviewedBy = rec.reviewed_by || "";
+      state.reviewDate = rec.reviewed_date || "";
+      state.layer = rec.layer_of_decision;
+      state.outcome = rec.outcome;
+      state.keyReason = rec.key_reason;
+      state.points = rec.points_to_carry_forward || "";
+      state.formattingNote = rec.formatting_note || "";
+      state.emailText = rec.email_text;
+      state.emailEdited = true;
+      state.savedId = rec.id;
+      state.savedUpdatedAt = rec.updated_at;
+      state.shareableUrl = rec.shareable_url || "";
+      state.stage4BackTarget = 0;
+
+      // Determine template from outcome
+      if (state.outcome === "Not Suitable for IJSaP") {
+        state.template = state.layer === "Layer 2" ? "priorPublication" : "notSuitable";
+      } else if (state.outcome === "Genre Redirect") {
+        state.template = "genreRedirect";
+      } else if (state.outcome === "Administrative Return") {
+        state.template = "adminReturn";
+      } else if (state.outcome === "Developmental Return") {
+        state.template = "developmentalReturn";
+      } else if (state.outcome === "Revise Before Review") {
+        state.template = "reviseBeforeReview";
+      } else if (state.outcome === "Proceed to Review") {
+        state.template = "reviewerNotes";
+      }
+
+      // Set genre dropdown on stage 0
+      $("fieldSubID").value = state.submissionId;
+      $("fieldTitle").value = state.title;
+      $("fieldGenre").value = state.genre;
+      $("fieldEditors").value = state.editors;
+      $("fieldDate").value = state.assessmentDate;
+
+      state.maxStageReached = 4;
+      state.currentStage = 4;
+      goToStage(4);
+
+    } catch {
+      showLoadError(C.ui.networkError);
+    }
+  }
+
+  function showLoadError(msg) {
+    const container = $("appContainer");
+    container.style.display = "block";
+    container.innerHTML = "";
+    const notice = document.createElement("div");
+    notice.className = "notice notice-error";
+    notice.style.maxWidth = "600px";
+    notice.style.margin = "3rem auto";
+    notice.textContent = msg;
+    container.appendChild(notice);
+  }
+
+  // ---- Genre Reference Table ----
+  function buildGenreRefTable() {
+    const body = $("genreRefBody");
+    const table = document.createElement("table");
+    table.className = "genre-ref-table";
+    const thead = document.createElement("thead");
+    const hrow = document.createElement("tr");
+    ["Genre", "Word limit", "Threshold question", "Most common gap"].forEach(h => {
+      const th = document.createElement("th");
+      th.textContent = h;
+      hrow.appendChild(th);
+    });
+    thead.appendChild(hrow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    for (const row of C.rubric.genreReferenceTable) {
+      const tr = document.createElement("tr");
+      [row.genre, row.wordLimit, row.threshold, row.commonGap].forEach(v => {
+        const td = document.createElement("td");
+        td.textContent = v;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    body.appendChild(table);
+  }
+
+  // ---- Collapsible panels ----
+  function setupCollapsible(toggleId, bodyId) {
+    $(toggleId).addEventListener("click", () => {
+      $(toggleId).classList.toggle("open");
+      $(bodyId).classList.toggle("open");
+    });
+  }
+
+  // ---- Restore ----
+  function offerRestore(saved) {
+    $("restorePromptText").textContent = C.ui.restorePrompt;
+    $("restorePrompt").classList.add("show");
+
+    $("restoreBtn").addEventListener("click", () => {
+      $("restorePrompt").classList.remove("show");
+      Object.assign(state, saved);
+      // Repopulate stage 0 fields
+      $("fieldSubID").value = state.submissionId;
+      $("fieldTitle").value = state.title;
+      $("fieldGenre").value = state.genre;
+      $("fieldEditors").value = state.editors;
+      $("fieldDate").value = state.assessmentDate;
+      goToStage(state.currentStage);
+    }, { once: true });
+
+    $("startFreshBtn").addEventListener("click", () => {
+      $("restorePrompt").classList.remove("show");
+      clearAutosave();
+    }, { once: true });
+  }
+
+  // ---- Init ----
+  function initApp() {
+    $("appContainer").style.display = "block";
+
+    // Version display
+    $("versionDisplay").textContent = "Rubric: " + C.RUBRIC_VERSION + " | Content v" + C.CONTENT_VERSION;
+    $("footerVersion").textContent = "Content v" + C.CONTENT_VERSION;
+
+    initStage0();
+    buildGenreRefTable();
+    setupCollapsible("genreRefToggle", "genreRefBody");
+    setupCollapsible("toneToggle", "toneBody");
+
+    const params = new URLSearchParams(window.location.search);
+    const loadId = params.get("id");
+
+    if (loadId) {
+      loadRecord(loadId);
+    } else {
+      // Check autosave
+      const saved = loadAutosave();
+      if (saved && saved.submissionId) {
+        offerRestore(saved);
+      }
+      goToStage(0);
+    }
+  }
+
+  // ---- Entry point ----
+  const storedToken = sessionStorage.getItem("ijsap_token");
+  if (storedToken) {
+    token = storedToken;
+    initApp();
+  } else {
+    showTokenGate();
+  }
+
+})();
+</script>
+</body>
+</html>

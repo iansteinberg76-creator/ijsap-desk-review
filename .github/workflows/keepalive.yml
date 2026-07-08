@@ -1,0 +1,25 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # Runs every Sunday at 06:00 UTC
+    - cron: "0 6 * * 0"
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping list-records endpoint
+        env:
+          IJSAP_SECRET: ${{ secrets.IJSAP_SECRET }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "x-ijsap-token: $IJSAP_SECRET" \
+            "${SITE_URL}/api/list-records?genre=__keepalive")
+          echo "Response status: $STATUS"
+          if [ "$STATUS" -ne 200 ]; then
+            echo "::error::Keep-alive request failed with status $STATUS"
+            exit 1
+          fi

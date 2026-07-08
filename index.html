@@ -533,8 +533,9 @@
 
   // ---- Stage 0 ----
   function initStage0() {
-    // Populate genre dropdown
+    // Populate genre dropdown (clear first to prevent duplicates on bfcache restore)
     const sel = $("fieldGenre");
+    sel.innerHTML = '<option value="">Select genre...</option>';
     for (const g of Object.keys(META.genres)) {
       const opt = document.createElement("option");
       opt.value = g;
